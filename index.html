@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>幸運大抽獎 Lucky Draw Spinner</title>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --accent-color: #6366f1;
+      --accent-hover: #4f46e5;
+      --text-color: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    h1 {
+      margin-bottom: 0.5rem;
+      font-size: 2.2rem;
+      text-align: center;
+      background: linear-gradient(135deg, #a5b4fc, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.subtitle {
+      color: var(--text-muted);
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+      width: 100%;
+      max-width: 900px;
+    }
+
+    @media (min-width: 768px) {
+      .container {
+        flex-direction: row;
+        align-items: flex-start;
+        justify-content: center;
+      }
+    }
+
+    /* Wheel Section */
+    .wheel-section {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .wheel-container {
+      position: relative;
+      width: 340px;
+      height: 340px;
+    }
+
+    @media (min-width: 480px) {
+      .wheel-container {
+        width: 400px;
+        height: 400px;
+      }
+    }
+
+    /* Pointer/Ticker */
+    .pointer {
+      position: absolute;
+      top: -15px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 18px solid transparent;
+      border-right: 18px solid transparent;
+      border-top: 32px solid #ef4444;
+      z-index: 10;
+      filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(99, 102, 241, 0.2);
+    }
+
+    .spin-btn {
+      margin-top: 1.5rem;
+      padding: 0.8rem 2.5rem;
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: white;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border: none;
+      border-radius: 9999px;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+      transition: all 0.2s ease;
+    }
+
+    .spin-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6);
+    }
+
+    .spin-btn:disabled {
+      background: #475569;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* Controls Panel */
+    .controls-panel {
+      background-color: var(--card-bg);
+      padding: 1.5rem;
+      border-radius: 1rem;
+      width: 100%;
+      max-width: 340px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .controls-panel h2 {
+      font-size: 1.2rem;
+      margin-bottom: 1rem;
+      color: var(--text-color);
+    }
+
+    .input-group {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 0.6rem 0.8rem;
+      border-radius: 0.5rem;
+      border: 1px solid #334155;
+      background-color: #0f172a;
+      color: var(--text-color);
+      outline: none;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--accent-color);
+    }
+
+    .add-btn {
+      padding: 0.6rem 1rem;
+      background-color: var(--accent-color);
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .add-btn:hover {
+      background-color: var(--accent-hover);
+    }
+
+    .names-list {
+      list-style: none;
+      max-height: 220px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .name-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #0f172a;
+      padding: 0.5rem 0.8rem;
+      border-radius: 0.5rem;
+      border: 1px solid #334155;
+    }
+
+    .delete-btn {
+      background: none;
+      border: none;
+      color: #ef4444;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 1.1rem;
+      padding: 0 0.3rem;
+    }
+
+    .delete-btn:hover {
+      color: #dc2626;
+    }
+
+    /* Winner Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      z-index: 100;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal {
+      background-color: var(--card-bg);
+      padding: 2.5rem 2rem;
+      border-radius: 1.5rem;
+      text-align: center;
+      max-width: 360px;
+      width: 90%;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+      transform: scale(0.8);
+      transition: transform 0.3s ease;
+    }
+
+    .modal-overlay.active .modal {
+      transform: scale(1);
+    }
+
+    .modal h2 {
+      color: var(--text-muted);
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.5rem;
+    }
+
+    .winner-name {
+      font-size: 2.2rem;
+      font-weight: bold;
+      color: #38bdf8;
+      margin-bottom: 1.5rem;
+      word-break: break-word;
+    }
+
+    .close-btn {
+      padding: 0.6rem 2rem;
+      background-color: var(--accent-color);
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .close-btn:hover {
+      background-color: var(--accent-hover);
+    }
+
+    /* Confetti Canvas */
+    #confetti-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 99;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>幸運大抽獎 Lucky Draw</h1>
+  <p class="subtitle">轉動幸運輪盤，看看誰是幸運兒！</p>
+
+  <div class="container">
+    <!-- Wheel Section -->
+    <div class="wheel-section">
+      <div class="wheel-container">
+        <div class="pointer"></div>
+        <canvas id="wheel" width="400" height="400"></canvas>
+      </div>
+      <button id="spin-btn" class="spin-btn">開轉！SPIN</button>
+    </div>
+
+    <!-- Controls Panel -->
+    <div class="controls-panel">
+      <h2>參加者名單</h2>
+      <div class="input-group">
+        <input type="text" id="name-input" placeholder="輸入名字（如 🦊 Fox）..." maxlength="25">
+        <button id="add-btn" class="add-btn">新增</button>
+      </div>
+      <ul id="names-list" class="names-list"></ul>
+    </div>
+  </div>
+
+  <!-- Winner Modal -->
+  <div id="modal-overlay" class="modal-overlay">
+    <div class="modal">
+      <h2>🎉 恭喜中獎者 🎉</h2>
+      <div id="winner-name" class="winner-name">Name</div>
+      <button id="close-modal" class="close-btn">太棒了！</button>
+    </div>
+  </div>
+
+  <canvas id="confetti-canvas"></canvas>
+
+  <script>
+    // 預設名單（每個名字前都有專屬的得意 Icon）
+    let names = ['🐰 Judy', '🐼 Andy', '🐱 Kelly', '🦁 Michael', '🦄 Cici'];
+    
+    // 輪盤繽紛色彩
+    const sliceColors = [
+      '#ef4444', '#3b82f6', '#10b981', '#f59e0b', 
+      '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'
+    ];
+
+    // Canvas 元素與控制 DOM
+    const canvas = document.getElementById('wheel');
+    const ctx = canvas.getContext('2d');
+    const spinBtn = document.getElementById('spin-btn');
+    const nameInput = document.getElementById('name-input');
+    const addBtn = document.getElementById('add-btn');
+    const namesList = document.getElementById('names-list');
+    const modalOverlay = document.getElementById('modal-overlay');
+    const winnerNameEl = document.getElementById('winner-name');
+    const closeModalBtn = document.getElementById('close-modal');
+
+    // 輪盤狀態
+    let currentAngle = 0;
+    let isSpinning = false;
+
+    // --- 更新名單列表 ---
+    function updateNamesList() {
+      namesList.innerHTML = '';
+      names.forEach((name, index) => {
+        const li = document.createElement('li');
+        li.className = 'name-item';
+        li.innerHTML = `
+          <span>${escapeHtml(name)}</span>
+          <button class="delete-btn" onclick="removeName(${index})">&times;</button>
+        `;
+        namesList.appendChild(li);
+      });
+      spinBtn.disabled = names.length === 0 || isSpinning;
+      drawWheel();
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.innerText = text;
+      return div.innerHTML;
+    }
+
+    function addName() {
+      const name = nameInput.value.trim();
+      if (name) {
+        names.push(name);
+        nameInput.value = '';
+        updateNamesList();
+      }
+    }
+
+    function removeName(index) {
+      if (isSpinning) return;
+      names.splice(index, 1);
+      updateNamesList();
+    }
+
+    nameInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') addName();
+    });
+    addBtn.addEventListener('click', addName);
+
+    // --- 繪製輪盤 ---
+    function drawWheel() {
+      const numSlices = names.length;
+      const width = canvas.width;
+      const height = canvas.height;
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const radius = width / 2 - 10;
+
+      ctx.clearRect(0, 0, width, height);
+
+      if (numSlices === 0) {
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+        ctx.fillStyle = '#334155';
+        ctx.fill();
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('請新增參加者名字！', centerX, centerY);
+        return;
+      }
+
+      const sliceAngle = (2 * Math.PI) / numSlices;
+
+      for (let i = 0; i < numSlices; i++) {
+        const startAngle = currentAngle + i * sliceAngle;
+        const endAngle = startAngle + sliceAngle;
+
+        // 畫扇形
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+        ctx.closePath();
+        ctx.fillStyle = sliceColors[i % sliceColors.length];
+        ctx.fill();
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        // 畫文字與 Icon
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(startAngle + sliceAngle / 2);
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#ffffff';
+        
+        // 自動調整字型大小，預設設為 18px 支援 Emoji 顯示
+        ctx.font = 'bold 18px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+        ctx.shadowColor = 'rgba(0,0,0,0.5)';
+        ctx.shadowBlur = 4;
+        ctx.fillText(names[i], radius - 20, 0);
+        ctx.restore();
+      }
+
+      // 畫中間圓心蓋
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, 30, 0, 2 * Math.PI);
+      ctx.fillStyle = '#0f172a';
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+
+    // --- 旋轉動畫 ---
+    function spin() {
+      if (isSpinning || names.length === 0) return;
+
+      isSpinning = true;
+      spinBtn.disabled = true;
+
+      const spinDuration = 5000; // 5 秒旋轉
+      const startSpeed = Math.random() * 0.2 + 0.3;
+      const totalRadianSpin = startSpeed * (spinDuration / 16) + (Math.random() * Math.PI * 2);
+      
+      const startTime = performance.now();
+      const startAngle = currentAngle;
+
+      function animate(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / spinDuration, 1);
+
+        // 立方減速曲線（Ease-out）
+        const easeOut = 1 - Math.pow(1 - progress, 3);
+        currentAngle = startAngle + totalRadianSpin * easeOut;
+
+        drawWheel();
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          isSpinning = false;
+          determineWinner();
+        }
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    spinBtn.addEventListener('click', spin);
+
+    // --- 計算中獎者 ---
+    function determineWinner() {
+      const numSlices = names.length;
+      const sliceAngle = (2 * Math.PI) / numSlices;
+      
+      // 指針位於頂部 (-90度，即 1.5 * PI)
+      const pointerAngle = 1.5 * Math.PI;
+      
+      let normalizedAngle = currentAngle % (2 * Math.PI);
+      if (normalizedAngle < 0) normalizedAngle += 2 * Math.PI;
+
+      let relativeAngle = (pointerAngle - normalizedAngle) % (2 * Math.PI);
+      if (relativeAngle < 0) relativeAngle += 2 * Math.PI;
+
+      const winningIndex = Math.floor(relativeAngle / sliceAngle);
+      showWinner(names[winningIndex]);
+    }
+
+    function showWinner(name) {
+      winnerNameEl.textContent = name;
+      modalOverlay.classList.add('active');
+      triggerConfetti();
+    }
+
+    closeModalBtn.addEventListener('click', () => {
+      modalOverlay.classList.remove('active');
+      spinBtn.disabled = false;
+    });
+
+    // --- 七彩紙屑特效 ---
+    const confettiCanvas = document.getElementById('confetti-canvas');
+    const confettiCtx = confettiCanvas.getContext('2d');
+    let confettiParticles = [];
+
+    function resizeConfettiCanvas() {
+      confettiCanvas.width = window.innerWidth;
+      confettiCanvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeConfettiCanvas);
+    resizeConfettiCanvas();
+
+    function triggerConfetti() {
+      confettiParticles = [];
+      const particleCount = 100;
+      
+      for (let i = 0; i < particleCount; i++) {
+        confettiParticles.push({
+          x: confettiCanvas.width / 2,
+          y: confettiCanvas.height / 2,
+          vx: (Math.random() - 0.5) * 12,
+          vy: (Math.random() - 0.5) * 12 - 4,
+          size: Math.random() * 8 + 4,
+          color: sliceColors[Math.floor(Math.random() * sliceColors.length)],
+          gravity: 0.15,
+          opacity: 1,
+          decay: Math.random() * 0.015 + 0.005
+        });
+      }
+
+      function updateConfetti() {
+        confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+        
+        let activeParticles = false;
+        confettiParticles.forEach((p) => {
+          if (p.opacity > 0) {
+            activeParticles = true;
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += p.gravity;
+            p.opacity -= p.decay;
+
+            confettiCtx.save();
+            confettiCtx.globalAlpha = Math.max(p.opacity, 0);
+            confettiCtx.fillStyle = p.color;
+            confettiCtx.fillRect(p.x, p.y, p.size, p.size);
+            confettiCtx.restore();
+          }
+        });
+
+        if (activeParticles) {
+          requestAnimationFrame(updateConfetti);
+        }
+      }
+
+      requestAnimationFrame(updateConfetti);
+    }
+
+    // 初始化頁面
+    updateNamesList();
+  </script>
+</body>
+</html>
